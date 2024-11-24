@@ -20,21 +20,29 @@ module AnyStyle
         })
       end
 
-      def normalize(item, prev: [], **opts)
-        map_values(item) do |key, value|
-          value.gsub!(/(^[\(\[]|[,;:\)\]]+$)/, '')
-          case
-          when repeater?(value) && prev.length > 0
-            prev[-1].dig(key, 0) || prev[-1].dig(:author, 0) || prev[-1].dig(:editor, 0)
-          else
-            begin
-              parse(strip(value))
-            rescue
-              [{ literal: value.strip }]
-            end
-          end
+def normalize(item, prev: [], **opts)
+  map_values(item) do |key, value|
+    value.gsub!(/(^[\(\[]|[,;:\)\]]+$)/, '') # Cleanup surrounding punctuation
+
+    # Avoid splitting if no comma is found
+    if !value.include?(",")
+      # Treat as a single entity
+     [{ family: value.strip.gsub(/\.$/, '') }]
+    else
+      # Existing logic for splitting names
+      case
+      when repeater?(value) && prev.length > 0
+        prev[-1].dig(key, 0) || prev[-1].dig(:author, 0) || prev[-1].dig(:editor, 0)
+      else
+        begin
+          parse(strip(value)) # Split using Namae if comma is present
+        rescue
+          [{ literal: value.strip }]
         end
       end
+    end
+  end
+end
 
       def repeater?(value)
         value =~ /^([\p{Pd}_*][\p{Pd}_* ]+|\p{Co})(,|:|\.|$)/
